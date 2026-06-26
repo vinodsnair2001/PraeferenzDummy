@@ -53,6 +53,14 @@ The engine's contract is:
 3. Execute evaluators in order, passing a shared `RuleContext`.
 4. Aggregate results into an `OriginCalculationResult` with a full audit trail.
 
+> **Fundamental Constraint — No Hard-Coded Business Logic**
+>
+> The Rule Engine **must not contain any hard-coded business rules, thresholds, or conditions**.
+> Every rule, every threshold value (e.g., 40% Value Added), every applicable country list,
+> and every execution condition is stored in the `rule_engine.rule_definitions` table in PostgreSQL.
+> Adding a new trade regulation, changing a threshold, or disabling a rule requires ONLY a database
+> change and UI configuration — **never a code change or application deployment**.
+
 ### Regulatory Basis
 
 Rules of origin in the engine map to three legislative sources:
@@ -754,6 +762,12 @@ The result must be greater than or equal to `threshold_percent`.
 ---
 
 ## 11. Rule Categories
+
+### Core Principles
+
+- **No Hard-Coded Logic**: All business rules are database-driven. The engine is a generic orchestrator only.
+
+### Category List
 
 | Category Constant | Description | Typical Execution Order |
 |-------------------|-------------|------------------------|
