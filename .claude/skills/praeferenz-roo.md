@@ -68,7 +68,7 @@ public interface IMyEntityRepository : IRepository<MyEntity>
 In `src/Application/Features/[Feature]/Commands/[VerbNoun]/`. Command is a `record`. Handler uses EF Core via repository.
 
 ```csharp
-public record CreateMyEntityCommand(...) : IRequest<Result<CreateMyEntityResponse>>;
+public record CreateMyEntityCommand(string Name, Guid TenantId, ...) : IRequest<Result<CreateMyEntityResponse>>;
 
 public class CreateMyEntityCommandHandler : IRequestHandler<CreateMyEntityCommand, Result<CreateMyEntityResponse>>
 {
@@ -90,19 +90,24 @@ public class CreateMyEntityCommandValidator : AbstractValidator<CreateMyEntityCo
 
 **Step 5 — Write the Query + QueryHandler**
 
-In `src/Application/Features/[Feature]/Queries/[GetNoun]/`. QueryHandler uses Dapper via `IDbConnectionFactory`. SQL stored as a constant in `src/Persistence/Queries/`.
+In `src/Application/Features/[Feature]/Queries/[GetNoun]/`. QueryHandler uses Dapper via `IDbConnection` (injected directly). SQL stored as a constant in `src/Persistence/Queries/`. Always wrap Dapper calls in `CommandDefinition` to honour `CancellationToken`.
 
 ```csharp
 public record GetMyEntityByIdQuery(Guid Id, Guid TenantId) : IRequest<Result<MyEntityDetailDto>>;
 
 public class GetMyEntityByIdQueryHandler : IRequestHandler<GetMyEntityByIdQuery, Result<MyEntityDetailDto>>
 {
+    private readonly IDbConnection _db;
+    public GetMyEntityByIdQueryHandler(IDbConnection db) => _db = db;
+
     public async Task<Result<MyEntityDetailDto>> Handle(
         GetMyEntityByIdQuery request, CancellationToken cancellationToken)
     {
-        using var conn = _connectionFactory.CreateConnection();
-        var dto = await conn.QuerySingleOrDefaultAsync<MyEntityDetailDto>(
-            MyEntityQueries.GetById, new { request.Id, request.TenantId });
+        var cmd = new CommandDefinition(
+            MyEntityQueries.GetById,
+            new { request.Id, request.TenantId },
+            cancellationToken: cancellationToken);
+        var dto = await _db.QuerySingleOrDefaultAsync<MyEntityDetailDto>(cmd);
         // ...
     }
 }
