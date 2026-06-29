@@ -476,6 +476,8 @@ public abstract class BaseEntity
 
 **Value Object**: Has no identity. Two value objects with the same properties are equal.
 
+> **Implementation status:** `HSCodeValue` and `CountryCode` are planned value objects. As of T02, entities use plain `string` properties (`HsCodeValue`, `OriginCountryCode`, `IsoCode2`, `IsoCode3`, `Currency`) for pragmatic simplicity. The refactor to typed value objects is deferred — see `PraeferenzBrain/decisions/T02-domain-entities.md`. Until then, validation is enforced via domain methods (e.g. `HsCode.IsValidLevel()`) and EF Core column constraints.
+
 ```csharp
 public class HSCodeValue : ValueObject
 {
