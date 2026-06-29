@@ -1,0 +1,6 @@
+@PraeferenzRoO.Api_HostAddress = http://localhost:5029
+
+GET {{PraeferenzRoO.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

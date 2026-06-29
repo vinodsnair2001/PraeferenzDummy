@@ -44,7 +44,7 @@ Determines whether a manufactured product qualifies as an Originating Product ac
 
 | Rule | Enforcement |
 |------|-------------|
-| Clean Architecture | Api cannot reference Infrastructure directly |
+| Clean Architecture | Api references Infrastructure + Persistence **only** in `Program.cs` for DI registration via extension methods — never in controllers or handlers |
 | CQRS mandatory | Command + CommandHandler + Query + QueryHandler + Validator + DTO + ResponseModel per feature |
 | Dapper = reads | ALL SELECT queries use Dapper |
 | EF Core = writes | ALL Insert/Update/Delete use EF Core |
