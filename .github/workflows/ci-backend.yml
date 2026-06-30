@@ -1,0 +1,260 @@
+name: CI — Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Tests/**'
+      - '*.sln'
+      - 'global.json'
+      - 'Directory.*.props'
+      - 'Directory.*.targets'
+      - '.github/workflows/ci-backend.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Tests/**'
+      - '*.sln'
+      - 'global.json'
+      - 'Directory.*.props'
+      - 'Directory.*.targets'
+      - '.github/workflows/ci-backend.yml'
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore
+      - name: Check formatting
+        run: dotnet format --verify-no-changes
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        # Compilation gate: verifies the solution builds before spending time on tests.
+        # Each test job rebuilds independently using the NuGet package cache above.
+        run: dotnet build -c Release --no-restore
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore
+      - name: Run unit tests
+        run: |
+          dotnet test Tests/Domain.Tests Tests/Application.Tests \
+            -c Release \
+            --no-restore \
+            --results-directory ./TestResults/unit \
+            --collect:"XPlat Code Coverage" \
+            --logger "trx;LogFileName=unit-results.trx"
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results-unit
+          path: ./TestResults/unit/*.trx
+          retention-days: 7
+      - name: Upload unit coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-unit
+          path: ./TestResults/unit/**/coverage.cobertura.xml
+          retention-days: 1
+          if-no-files-found: error
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: praeferenz_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore
+      - name: Run integration tests
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=praeferenz_test;Username=test;Password=test"
+        run: |
+          dotnet test Tests/Persistence.Tests Tests/Api.Tests Tests/Infrastructure.Tests \
+            -c Release \
+            --no-restore \
+            --results-directory ./TestResults/integration \
+            --collect:"XPlat Code Coverage" \
+            --logger "trx;LogFileName=integration-results.trx"
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results-integration
+          path: ./TestResults/integration/*.trx
+          retention-days: 7
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-integration
+          path: ./TestResults/integration/**/coverage.cobertura.xml
+          retention-days: 1
+          if-no-files-found: error
+
+  coverage-gate:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+      - name: Download unit coverage
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: coverage-unit
+          path: ./coverage-downloads/unit
+          merge-multiple: true
+      - name: Download integration coverage
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: coverage-integration
+          path: ./coverage-downloads/integration
+          merge-multiple: true
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool
+      - name: Merge coverage and generate Cobertura report
+        run: |
+          reportgenerator \
+            "-reports:./coverage-downloads/**/*.xml" \
+            "-targetdir:./coverage-report" \
+            "-reporttypes:Cobertura;Html" \
+            "-assemblyfilters:+PraeferenzRoO.*"
+      - name: Enforce per-assembly coverage thresholds
+        run: |
+          python3 << 'EOF'
+          import xml.etree.ElementTree as ET
+          import sys
+
+          tree = ET.parse('./coverage-report/Cobertura.xml')
+          root = tree.getroot()
+
+          # line-rate and branch-rate are 0.0–1.0; multiply by 100 for percentage
+          thresholds = {
+              'PraeferenzRoO.Domain':      {'line': 90.0, 'branch': 85.0},
+              'PraeferenzRoO.Application': {'line': 85.0, 'branch': 80.0},
+              'PraeferenzRoO.Api':         {'line': 80.0, 'branch': 75.0},
+          }
+
+          found = {k: {'line': None, 'branch': None} for k in thresholds}
+          for package in root.findall('.//package'):
+              name = package.get('name', '')
+              for assembly, t in thresholds.items():
+                  if name == assembly or name.startswith(assembly + '.'):
+                      line_rate   = float(package.get('line-rate',   0)) * 100
+                      branch_rate = float(package.get('branch-rate', 0)) * 100
+                      if found[assembly]['line'] is None or line_rate < found[assembly]['line']:
+                          found[assembly]['line'] = line_rate
+                      if found[assembly]['branch'] is None or branch_rate < found[assembly]['branch']:
+                          found[assembly]['branch'] = branch_rate
+
+          failures = []
+          for assembly, t in thresholds.items():
+              line_pct   = found[assembly]['line']
+              branch_pct = found[assembly]['branch']
+              if line_pct is None:
+                  print(f'SKIP: {assembly} not found in coverage report (no tests yet?)')
+                  continue
+              line_ok   = line_pct   >= t['line']
+              branch_ok = branch_pct >= t['branch']
+              print(f'{"PASS" if line_ok   else "FAIL"}: {assembly} line   {line_pct:.1f}% (required >= {t["line"]}%)')
+              print(f'{"PASS" if branch_ok else "FAIL"}: {assembly} branch {branch_pct:.1f}% (required >= {t["branch"]}%)')
+              if not line_ok:
+                  failures.append(f'{assembly}: line {line_pct:.1f}% < {t["line"]}%')
+              if not branch_ok:
+                  failures.append(f'{assembly}: branch {branch_pct:.1f}% < {t["branch"]}%')
+
+          if failures:
+              print('\nCoverage gate FAILED:')
+              for f in failures:
+                  print(f'  {f}')
+              sys.exit(1)
+
+          print('\nAll present assemblies meet their coverage thresholds.')
+          EOF
+      - name: Upload HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report-html
+          path: ./coverage-report/
+          retention-days: 7
