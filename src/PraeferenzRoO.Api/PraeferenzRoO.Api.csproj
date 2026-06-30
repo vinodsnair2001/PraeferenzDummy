@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PraeferenzRoO.Application\PraeferenzRoO.Application.csproj" />
     <ProjectReference Include="..\PraeferenzRoO.Infrastructure\PraeferenzRoO.Infrastructure.csproj" />
     <ProjectReference Include="..\PraeferenzRoO.Persistence\PraeferenzRoO.Persistence.csproj" />

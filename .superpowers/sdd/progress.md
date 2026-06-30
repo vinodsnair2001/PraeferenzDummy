@@ -16,3 +16,11 @@ Task 2 (CI - ci-backend.yml): complete (commits 6f064ff..c915caa, review clean)
 Task 3 (CI - ci-frontend.yml): complete (commits c915caa..538060c, review clean)
 Task 3 (CI - ci-frontend.yml): complete (commits c915caa..538060c, review clean)
 Final review fix: complete (commits 538060c..75568e6, review clean — all 6 findings resolved)
+
+## Completed Development Tasks
+
+| Task | Branch | PR | Date | Notes |
+|------|--------|-----|------|-------|
+| T01 — Solution scaffold (6-project Clean Architecture) | issue-1-solution-scaffold | #28 (merged) | 2026-06-30 | 6 projects, Directory.Build.props, Directory.Packages.props |
+| T02 — Domain entities, enums, base classes | issue-2-domain-entities | #30 (merged) | 2026-06-30 | 10 entities, 4 enums, AggregateRoot/AuditableEntity/BaseEntity/DomainEvent |
+| T03 — EF Core DbContext + InitialCreate migration | issue-3-ef-core-dbcontext-migration | #33 | 2026-06-30 | ApplicationDbContext, 10 IEntityTypeConfiguration files, AuditableEntityInterceptor, DapperContext, IDapperContext, ITenantService, ICurrentUserService, UuidGenerator, InitialCreate migration (forward-only), 3 unit tests |
