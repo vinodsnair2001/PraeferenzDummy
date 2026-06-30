@@ -2,7 +2,7 @@ name: CI — Backend
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/**'
       - 'Tests/**'
@@ -12,7 +12,7 @@ on:
       - 'Directory.*.targets'
       - '.github/workflows/ci-backend.yml'
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/**'
       - 'Tests/**'
@@ -92,7 +92,7 @@ jobs:
         run: dotnet restore
       - name: Run unit tests
         run: |
-          dotnet test Tests/Domain.Tests Tests/Application.Tests \
+          dotnet test Tests/PraeferenzRoO.Domain.Tests Tests/PraeferenzRoO.Application.Tests \
             -c Release \
             --no-restore \
             --results-directory ./TestResults/unit \
@@ -148,7 +148,7 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=praeferenz_test;Username=test;Password=test"
         run: |
-          dotnet test Tests/Persistence.Tests Tests/Api.Tests Tests/Infrastructure.Tests \
+          dotnet test Tests/PraeferenzRoO.Persistence.Tests Tests/PraeferenzRoO.Api.Tests \
             -c Release \
             --no-restore \
             --results-directory ./TestResults/integration \
