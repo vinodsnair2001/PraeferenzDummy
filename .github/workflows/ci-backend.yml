@@ -92,12 +92,14 @@ jobs:
         run: dotnet restore
       - name: Run unit tests
         run: |
-          dotnet test Tests/PraeferenzRoO.Domain.Tests Tests/PraeferenzRoO.Application.Tests \
-            -c Release \
-            --no-restore \
-            --results-directory ./TestResults/unit \
-            --collect:"XPlat Code Coverage" \
-            --logger "trx;LogFileName=unit-results.trx"
+          for project in Tests/PraeferenzRoO.Domain.Tests Tests/PraeferenzRoO.Application.Tests; do
+            dotnet test "$project" \
+              -c Release \
+              --no-restore \
+              --results-directory ./TestResults/unit \
+              --collect:"XPlat Code Coverage" \
+              --logger "trx;LogFileName=unit-results.trx"
+          done
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -148,12 +150,14 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=praeferenz_test;Username=test;Password=test"
         run: |
-          dotnet test Tests/PraeferenzRoO.Persistence.Tests Tests/PraeferenzRoO.Api.Tests \
-            -c Release \
-            --no-restore \
-            --results-directory ./TestResults/integration \
-            --collect:"XPlat Code Coverage" \
-            --logger "trx;LogFileName=integration-results.trx"
+          for project in Tests/PraeferenzRoO.Persistence.Tests Tests/PraeferenzRoO.Api.Tests; do
+            dotnet test "$project" \
+              -c Release \
+              --no-restore \
+              --results-directory ./TestResults/integration \
+              --collect:"XPlat Code Coverage" \
+              --logger "trx;LogFileName=integration-results.trx"
+          done
       - name: Upload integration test results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
